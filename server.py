@@ -6,35 +6,29 @@ from datetime import datetime
 from aiohttp import web
 import socketio
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("CON_MESSENGER")
 
-# Инициализация Socket.IO
 sio = socketio.AsyncServer(
     async_mode='aiohttp',
     cors_allowed_origins="*",
-    logger=True,
-    engineio_logger=True
+    logger=False,
+    engineio_logger=False
 )
 app = web.Application()
 sio.attach(app)
 
-# База данных в памяти
-users_db = {
-    "alice": "pass123",
-    "bob": "qwerty"
-}
+
+users_db = {}
 online_users = {}
+user_sessions = {}
 message_history = {}
 
-# Генерация ID сообщения
 def generate_message_id():
-    return str(uuid.uuid4())[:8]
+    return str(uuid.uuid4())
 
-# Сохранение сообщения
 def save_message(sender, recipient, text):
-    key = f"{min(sender, recipient)}:{max(sender, recipient)}"
+    key = tuple(sorted([sender, recipient]))
     
     if key not in message_history:
         message_history[key] = []
@@ -44,76 +38,104 @@ def save_message(sender, recipient, text):
         'sender': sender,
         'recipient': recipient,
         'text': text,
-        'timestamp': datetime.now().strftime("%H:%M:%S"),
-        'status': 'delivered'
+        'timestamp': datetime.now().strftime("%H:%M"),
+        'status': 'sent'
     }
     
     message_history[key].append(message)
     return message
 
-# Получение истории
 def get_message_history(user1, user2):
-    key = f"{min(user1, user2)}:{max(user1, user2)}"
+    key = tuple(sorted([user1, user2]))
     return message_history.get(key, [])
 
-# Socket.IO события
+def update_user_status(username, status):
+    for sid in user_sessions.get(username, []):
+        sio.emit('user_status', {'username': username, 'online': status}, room=sid)
+
 @sio.event
 async def connect(sid, environ):
-    logger.info(f"✅ Подключение: {sid}")
+    logger.info(f"подключение: {sid}")
 
 @sio.event
 async def disconnect(sid):
     if sid in online_users:
         username = online_users[sid]
         del online_users[sid]
-        await sio.emit('user_offline', username)
-        logger.info(f"⛔ Отключение: {username}")
+        
+        if username in user_sessions:
+            user_sessions[username].remove(sid)
+            if not user_sessions[username]:
+                del user_sessions[username]
+                update_user_status(username, False)
+                logger.info(f"пользователь отключен: {username}")
+        
+        logger.info(f"сессия завершена: {username}/{sid}")
 
 @sio.event
 async def login(sid, data):
-    username = data.get('username', '').strip()
+    username = data.get('username', '').strip().lower()
     password = data.get('password', '')
     
     if not username or not password:
-        return await sio.emit('auth_error', "Заполните все поля", room=sid)
+        return await sio.emit('auth_error', "заполните все поля", room=sid)
     
     if username not in users_db or users_db[username] != password:
-        return await sio.emit('auth_error', "Неверный логин/пароль", room=sid)
-    
-    if username in online_users.values():
-        return await sio.emit('auth_error', "Уже в системе", room=sid)
+        return await sio.emit('auth_error', "неверный логин/пароль", room=sid)
+        
+    if username not in user_sessions:
+        user_sessions[username] = []
     
     online_users[sid] = username
+    user_sessions[username].append(sid)
+    
     await sio.save_session(sid, {'username': username})
     await sio.emit('auth_success', {'username': username}, room=sid)
-    await sio.emit('user_online', username)
-    logger.info(f"🔑 Вход: {username}")
+    update_user_status(username, True)
+    
+    for key in list(message_history.keys()):
+        if username in key:
+            other_user = key[0] if key[1] == username else key[1]
+            messages = [msg for msg in message_history[key] 
+                       if msg['recipient'] == username and msg.get('status') != 'delivered']
+            
+            if messages:
+                await sio.emit('unread_messages', {
+                    'sender': other_user,
+                    'messages': messages
+                }, room=sid)
+                
+                for msg in messages:
+                    msg['status'] = 'delivered'
+
+    logger.info(f"вход: {username}")
 
 @sio.event
 async def register(sid, data):
-    username = data.get('username', '').strip()
+    username = data.get('username', '').strip().lower()
     password = data.get('password', '')
     
     if not username or not password:
-        return await sio.emit('reg_error', "Заполните все поля", room=sid)
+        return await sio.emit('reg_error', "заполните все поля", room=sid)
     
     if len(username) < 3:
-        return await sio.emit('reg_error', "Имя > 3 символов", room=sid)
+        return await sio.emit('reg_error', "имя > 3 символов", room=sid)
     
     if len(password) < 4:
-        return await sio.emit('reg_error', "Пароль > 4 символов", room=sid)
+        return await sio.emit('reg_error', "пароль > 4 символов", room=sid)
     
     if username in users_db:
-        return await sio.emit('reg_error', "Имя занято", room=sid)
+        return await sio.emit('reg_error', "имя занято", room=sid)
     
     users_db[username] = password
-    await sio.emit('reg_success', "Аккаунт создан!", room=sid)
-    logger.info(f"🆕 Регистрация: {username}")
+    await sio.emit('reg_success', "аккаунт создан!", room=sid)
+    logger.info(f"регистрация: {username}")
 
 @sio.event
 async def get_online_users(sid):
-    users = list(online_users.values())
-    current_user = (await sio.get_session(sid)).get('username')
+    users = list(user_sessions.keys())
+    session = await sio.get_session(sid)
+    current_user = session.get('username')
     
     if current_user in users:
         users.remove(current_user)
@@ -123,22 +145,22 @@ async def get_online_users(sid):
 @sio.event
 async def start_typing(sid, data):
     recipient = data.get('recipient')
-    sender = (await sio.get_session(sid)).get('username')
+    session = await sio.get_session(sid)
+    sender = session.get('username')
     
-    if recipient in online_users.values():
-        recipient_sid = [sid for sid, uname in online_users.items() if uname == recipient]
-        if recipient_sid:
-            await sio.emit('typing_start', {'sender': sender}, room=recipient_sid[0])
+    if recipient in user_sessions:
+        for recipient_sid in user_sessions[recipient]:
+            await sio.emit('typing_start', {'sender': sender}, room=recipient_sid)
 
 @sio.event
 async def stop_typing(sid, data):
     recipient = data.get('recipient')
-    sender = (await sio.get_session(sid)).get('username')
+    session = await sio.get_session(sid)
+    sender = session.get('username')
     
-    if recipient in online_users.values():
-        recipient_sid = [sid for sid, uname in online_users.items() if uname == recipient]
-        if recipient_sid:
-            await sio.emit('typing_stop', {'sender': sender}, room=recipient_sid[0])
+    if recipient in user_sessions:
+        for recipient_sid in user_sessions[recipient]:
+            await sio.emit('typing_stop', {'sender': sender}, room=recipient_sid)
 
 @sio.event
 async def send_message(sid, data):
@@ -153,21 +175,18 @@ async def send_message(sid, data):
     
     if not sender:
         return
-    
-    # Сохраняем сообщение
+
     message = save_message(sender, recipient, text)
     
-    # Отправка получателю
-    if recipient in online_users.values():
-        recipient_sid = [sid for sid, uname in online_users.items() if uname == recipient]
-        if recipient_sid:
-            await sio.emit('new_message', message, room=recipient_sid[0])
+    if recipient in user_sessions:
+        for recipient_sid in user_sessions[recipient]:
+            await sio.emit('new_message', message, room=recipient_sid)
+            message['status'] = 'delivered'
     
-    # Подтверждение отправителю
     await sio.emit('message_sent', {
         'temp_id': data.get('temp_id'),
         'message_id': message['id'],
-        'status': 'delivered' if recipient in online_users.values() else 'sent'
+        'status': 'delivered' if recipient in user_sessions else 'sent'
     }, room=sid)
 
 @sio.event
@@ -184,21 +203,25 @@ async def get_message_history(sid, data):
         'contact': contact,
         'messages': history
     }, room=sid)
+    
+    key = tuple(sorted([username, contact]))
+    if key in message_history:
+        for msg in message_history[key]:
+            if msg['recipient'] == username:
+                msg['status'] = 'read'
 
-# Статика
 async def index(request):
     return web.FileResponse('./static/index.html')
 
 app.router.add_get('/', index)
 app.router.add_static('/static', path='static')
+app.router.add_static('/assets', path='assets')
 
-# Проверка работоспособности
 async def health_check(request):
     return web.Response(text=">_ Messenger работает!")
 
 app.router.add_get('/health', health_check)
 
-# Точка входа
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     logger.info(f"Starting server on port {port}")
