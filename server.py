@@ -1,18 +1,21 @@
 import os
-import json
 import uuid
 import asyncio
+import logging
 from datetime import datetime
 from aiohttp import web
 import socketio
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("CON_MESSENGER")
 
 # Инициализация Socket.IO
 sio = socketio.AsyncServer(
     async_mode='aiohttp',
     cors_allowed_origins="*",
-    ping_timeout=60,
-    ping_interval=25,
-    engineio_logger=False
+    logger=True,
+    engineio_logger=True
 )
 app = web.Application()
 sio.attach(app)
@@ -56,7 +59,7 @@ def get_message_history(user1, user2):
 # Socket.IO события
 @sio.event
 async def connect(sid, environ):
-    print(f"✅ Подключение: {sid}")
+    logger.info(f"✅ Подключение: {sid}")
 
 @sio.event
 async def disconnect(sid):
@@ -64,7 +67,7 @@ async def disconnect(sid):
         username = online_users[sid]
         del online_users[sid]
         await sio.emit('user_offline', username)
-        print(f"⛔ Отключение: {username}")
+        logger.info(f"⛔ Отключение: {username}")
 
 @sio.event
 async def login(sid, data):
@@ -84,7 +87,7 @@ async def login(sid, data):
     await sio.save_session(sid, {'username': username})
     await sio.emit('auth_success', {'username': username}, room=sid)
     await sio.emit('user_online', username)
-    print(f"🔑 Вход: {username}")
+    logger.info(f"🔑 Вход: {username}")
 
 @sio.event
 async def register(sid, data):
@@ -105,7 +108,7 @@ async def register(sid, data):
     
     users_db[username] = password
     await sio.emit('reg_success', "Аккаунт создан!", room=sid)
-    print(f"🆕 Регистрация: {username}")
+    logger.info(f"🆕 Регистрация: {username}")
 
 @sio.event
 async def get_online_users(sid):
@@ -123,7 +126,9 @@ async def start_typing(sid, data):
     sender = (await sio.get_session(sid)).get('username')
     
     if recipient in online_users.values():
-        await sio.emit('typing_start', {'sender': sender}, room=sid)
+        recipient_sid = [sid for sid, uname in online_users.items() if uname == recipient]
+        if recipient_sid:
+            await sio.emit('typing_start', {'sender': sender}, room=recipient_sid[0])
 
 @sio.event
 async def stop_typing(sid, data):
@@ -131,7 +136,9 @@ async def stop_typing(sid, data):
     sender = (await sio.get_session(sid)).get('username')
     
     if recipient in online_users.values():
-        await sio.emit('typing_stop', {'sender': sender}, room=sid)
+        recipient_sid = [sid for sid, uname in online_users.items() if uname == recipient]
+        if recipient_sid:
+            await sio.emit('typing_stop', {'sender': sender}, room=recipient_sid[0])
 
 @sio.event
 async def send_message(sid, data):
@@ -152,7 +159,9 @@ async def send_message(sid, data):
     
     # Отправка получателю
     if recipient in online_users.values():
-        await sio.emit('new_message', message, room=sid)
+        recipient_sid = [sid for sid, uname in online_users.items() if uname == recipient]
+        if recipient_sid:
+            await sio.emit('new_message', message, room=recipient_sid[0])
     
     # Подтверждение отправителю
     await sio.emit('message_sent', {
@@ -181,15 +190,16 @@ async def index(request):
     return web.FileResponse('./static/index.html')
 
 app.router.add_get('/', index)
-app.router.add_static('/static', path='./static')
+app.router.add_static('/static', path='static')
 
 # Проверка работоспособности
 async def health_check(request):
-    return web.Response(text="CON Messenger работает!")
+    return web.Response(text=">_ Messenger работает!")
 
 app.router.add_get('/health', health_check)
 
 # Точка входа
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
-    web.run_app(app, host='0.0.0.0', port=port, access_log=None)
+    logger.info(f"Starting server on port {port}")
+    web.run_app(app, host='0.0.0.0', port=port)
