@@ -215,7 +215,6 @@ async def index(request):
 
 app.router.add_get('/', index)
 app.router.add_static('/static', path='static')
-app.router.add_static('/assets', path='assets')
 
 async def health_check(request):
     return web.Response(text=">_ Messenger работает!")
