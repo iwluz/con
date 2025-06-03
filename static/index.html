@@ -140,536 +140,586 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        const CONFIG = {
-            RECONNECT_DELAY: 3000,
-            MAX_RECONNECTS: Infinity,
-            TYPING_TIMEOUT: 2000,
-            MESSAGE_RETRY_DELAY: 5000
-        };
+    const CONFIG = {
+        RECONNECT_DELAY: 3000,
+        MAX_RECONNECTS: Infinity,
+        TYPING_TIMEOUT: 2000,
+        MESSAGE_RETRY_DELAY: 5000
+    };
 
-        const STATE = {
-            currentUser: null,
-            activeContact: null,
-            socket: null,
-            reconnectAttempts: 0,
-            typingTimeout: null,
-            pendingMessages: {},
-            isMobile: window.innerWidth <= 768
-        };
+    const STATE = {
+        currentUser: null,
+        activeContact: null,
+        socket: null,
+        reconnectAttempts: 0,
+        typingTimeout: null,
+        pendingMessages: {},
+        isMobile: window.innerWidth <= 768,
+        receivedMessages: new Set()
+    };
 
-        const ELEMENTS = {
-            authScreen: document.getElementById('authScreen'),
-            appScreen: document.getElementById('appScreen'),
-            loginForm: document.getElementById('loginForm'),
-            registerForm: document.getElementById('registerForm'),
-            statusIndicator: document.getElementById('statusIndicator'),
-            statusText: document.getElementById('statusText'),
-            loginBtn: document.getElementById('loginBtn'),
-            registerBtn: document.getElementById('registerBtn'),
-            showRegister: document.getElementById('showRegister'),
-            showLogin: document.getElementById('showLogin'),
-            logoutBtn: document.getElementById('logoutBtn'),
-            userAvatar: document.getElementById('userAvatar'),
-            userName: document.getElementById('userName'),
-            contactsList: document.getElementById('contactsList'),
-            currentContact: document.getElementById('currentContact'),
-            chatMessages: document.getElementById('chatMessages'),
-            messageInput: document.getElementById('messageInput'),
-            sendBtn: document.getElementById('sendBtn'),
-            typingIndicator: document.getElementById('typingIndicator'),
-            searchContact: document.getElementById('searchContact'),
-            contactsPanel: document.getElementById('contactsPanel'),
-            chatContainer: document.getElementById('chatContainer'),
-            menuBtn: document.getElementById('menuBtn'),
-            backBtn: document.getElementById('backBtn')
-        };
+    const ELEMENTS = {
+        authScreen: document.getElementById('authScreen'),
+        appScreen: document.getElementById('appScreen'),
+        loginForm: document.getElementById('loginForm'),
+        registerForm: document.getElementById('registerForm'),
+        statusIndicator: document.getElementById('statusIndicator'),
+        statusText: document.getElementById('statusText'),
+        loginBtn: document.getElementById('loginBtn'),
+        registerBtn: document.getElementById('registerBtn'),
+        showRegister: document.getElementById('showRegister'),
+        showLogin: document.getElementById('showLogin'),
+        logoutBtn: document.getElementById('logoutBtn'),
+        userAvatar: document.getElementById('userAvatar'),
+        userName: document.getElementById('userName'),
+        contactsList: document.getElementById('contactsList'),
+        currentContact: document.getElementById('currentContact'),
+        chatMessages: document.getElementById('chatMessages'),
+        messageInput: document.getElementById('messageInput'),
+        sendBtn: document.getElementById('sendBtn'),
+        typingIndicator: document.getElementById('typingIndicator'),
+        searchContact: document.getElementById('searchContact'),
+        contactsPanel: document.getElementById('contactsPanel'),
+        chatContainer: document.getElementById('chatContainer'),
+        menuBtn: document.getElementById('menuBtn'),
+        backBtn: document.getElementById('backBtn')
+    };
 
-        function initSocket() {
-            const serverUrl = window.location.origin;
-            STATE.socket = io(serverUrl, {
-                reconnection: true,
-                reconnectionAttempts: CONFIG.MAX_RECONNECTS,
-                reconnectionDelay: CONFIG.RECONNECT_DELAY,
-                transports: ['websocket'],
-                autoConnect: true,
-                withCredentials: true
-            });
+    function initSocket() {
+        const serverUrl = window.location.origin;
+        STATE.socket = io(serverUrl, {
+            reconnection: true,
+            reconnectionAttempts: CONFIG.MAX_RECONNECTS,
+            reconnectionDelay: CONFIG.RECONNECT_DELAY,
+            transports: ['websocket'],
+            autoConnect: true,
+            withCredentials: true
+        });
 
-            STATE.socket.on('connect', () => {
-                updateStatus('connected', 'онлайн');
-                STATE.reconnectAttempts = 0;
-                retryPendingMessages();
-                const savedUser = localStorage.getItem('messenger_user');
-                if (savedUser) {
-                    STATE.socket.emit('login', JSON.parse(savedUser));
-                }
-            });
+        STATE.socket.on('connect', () => {
+            updateStatus('connected', 'Онлайн');
+            STATE.reconnectAttempts = 0;
+            retryPendingMessages();
+            
+            const savedUser = localStorage.getItem('messenger_user');
+            if (savedUser) {
+                STATE.socket.emit('login', JSON.parse(savedUser));
+            }
+        });
 
-            STATE.socket.on('disconnect', () => {
-                updateStatus('disconnected', 'отключено');
-            });
+        STATE.socket.on('disconnect', () => {
+            updateStatus('disconnected', 'Отключено');
+        });
 
-            STATE.socket.on('connect_error', () => {
-                updateStatus('error', 'ошибка подключения');
-            });
+        STATE.socket.on('connect_error', () => {
+            updateStatus('error', 'Ошибка подключения');
+        });
 
-            STATE.socket.on('auth_success', (data) => {
-                STATE.currentUser = data.username;
-                showAppInterface();
-                localStorage.setItem('messenger_user', JSON.stringify({
-                    username: data.username,
-                    password: localStorage.getItem('messenger_password')
-                }));
-            });
+        STATE.socket.on('auth_success', (data) => {
+            STATE.currentUser = data.username;
+            showAppInterface();
+            
+            localStorage.setItem('messenger_user', JSON.stringify({
+                username: data.username,
+                password: localStorage.getItem('messenger_password')
+            }));
+        });
 
-            STATE.socket.on('auth_error', (error) => {
-                showNotification(`Ошибка: ${error}`);
-                localStorage.removeItem('messenger_user');
-                localStorage.removeItem('messenger_password');
-            });
+        STATE.socket.on('auth_error', (error) => {
+            showNotification(`Ошибка: ${error}`);
+            localStorage.removeItem('messenger_user');
+            localStorage.removeItem('messenger_password');
+        });
 
-            STATE.socket.on('reg_success', (message) => {
-                showNotification(message);
-                showLoginForm();
-            });
+        STATE.socket.on('reg_success', (message) => {
+            showNotification(message);
+            showLoginForm();
+        });
 
-            STATE.socket.on('reg_error', (error) => {
-                showNotification(`Ошибка: ${error}`);
-            });
+        STATE.socket.on('reg_error', (error) => {
+            showNotification(`Ошибка: ${error}`);
+        });
 
-            STATE.socket.on('online_users', (users) => {
-                updateContactsList(users);
-            });
+        STATE.socket.on('online_users', (users) => {
+            updateContactsList(users);
+        });
 
-            STATE.socket.on('user_status', (data) => {
-                updateContactStatus(data.username, data.online);
-            });
+        STATE.socket.on('user_status', (data) => {
+            updateContactStatus(data.username, data.online);
+        });
 
-            STATE.socket.on('user_online', (username) => {
-                updateContactStatus(username, true);
-            });
-
-            STATE.socket.on('user_offline', (username) => {
-                updateContactStatus(username, false);
-            });
-
-            STATE.socket.on('new_message', (message) => {
-                if (message.recipient === STATE.currentUser) {
-                    addMessageToChat(message, 'received');
-                    playNotificationSound();
-                    if (!document.hasFocus() && Notification.permission === 'granted') {
-                        new Notification(`новое сообщение от ${message.sender}!`, {
-                            body: message.text
-                        });
-                    }
-                }
-            });
-
-            STATE.socket.on('message_sent', (data) => {
-                updateMessageStatus(data.temp_id, data.message_id, data.status);
-            });
-
-            STATE.socket.on('message_history', (data) => {
-                if (data.contact === STATE.activeContact) {
-                    renderMessageHistory(data.messages);
-                }
-            });
-
-            STATE.socket.on('typing_start', (data) => {
-                if (data.sender === STATE.activeContact) {
-                    ELEMENTS.typingIndicator.textContent = `${data.sender} печатает...`;
-                    ELEMENTS.typingIndicator.style.display = 'inline';
-                }
-            });
-
-            STATE.socket.on('typing_stop', (data) => {
-                if (data.sender === STATE.activeContact) {
-                    ELEMENTS.typingIndicator.style.display = 'none';
-                }
-            });
-
-            STATE.socket.on('unread_messages', (data) => {
-                if (data.sender === STATE.activeContact) {
-                    data.messages.forEach(msg => {
-                        addMessageToChat(msg, 'received');
+        STATE.socket.on('new_message', (message) => {
+            if (STATE.receivedMessages.has(message.id)) return;
+            STATE.receivedMessages.add(message.id);
+            
+            if (message.recipient === STATE.currentUser) {
+                addMessageToChat(message, 'received');
+                playNotificationSound();
+                
+                if (!document.hasFocus() && Notification.permission === 'granted') {
+                    new Notification(`Новое сообщение от ${message.sender}`, {
+                        body: message.text
                     });
-                } else {
-                    showNotification(`новые сообщения от ${data.sender}!`);
                 }
-            });
+            }
+        });
 
-            async function sendMessageWithRetry(messageData, retries = 3) {
-                return new Promise((resolve) => {
-                    const trySend = (attempt = 0) => {
-                        if (STATE.socket.connected) {
-                            STATE.socket.emit('send_message', messageData, (ack) => {
-                                if (ack && ack.status === 'delivered') {
-                                    resolve(true);
-                                } else {
-                                    if (attempt < retries) {
-                                        setTimeout(() => trySend(attempt + 1), CONFIG.MESSAGE_RETRY_DELAY);
-                                    } else {
-                                        resolve(false);
-                                    }
-                                }
-                            });
-                        } else {
-                            if (attempt < retries) {
-                                setTimeout(() => trySend(attempt + 1), CONFIG.MESSAGE_RETRY_DELAY);
-                            } else {
-                                resolve(false);
-                            }
-                        }
-                    };
-                    trySend();
+        STATE.socket.on('message_sent', (data) => {
+            updateMessageStatus(data.temp_id, data.message_id, data.status);
+        });
+
+        STATE.socket.on('message_history', (data) => {
+            if (data.contact === STATE.activeContact) {
+                renderMessageHistory(data.messages);
+            }
+        });
+
+        STATE.socket.on('typing_start', (data) => {
+            if (data.sender === STATE.activeContact) {
+                ELEMENTS.typingIndicator.textContent = `${data.sender} печатает...`;
+                ELEMENTS.typingIndicator.style.display = 'inline';
+            }
+        });
+
+        STATE.socket.on('typing_stop', (data) => {
+            if (data.sender === STATE.activeContact) {
+                ELEMENTS.typingIndicator.style.display = 'none';
+            }
+        });
+
+        STATE.socket.on('unread_messages', (data) => {
+            if (data.sender === STATE.activeContact) {
+                data.messages.forEach(msg => {
+                    if (STATE.receivedMessages.has(msg.id)) return;
+                    STATE.receivedMessages.add(msg.id);
+                    addMessageToChat(msg, 'received');
                 });
+            } else {
+                showNotification(`Новые сообщения от ${data.sender}`);
             }
+        });
 
-            async function sendMessage() {
-                const message = ELEMENTS.messageInput.value.trim();
-                if (!message || !STATE.activeContact) return;
-                const tempId = `temp_${Date.now()}`;
-                const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                addMessageToChat({
-                    id: tempId,
-                    sender: STATE.currentUser,
-                    text: message,
-                    timestamp: timestamp,
-                    status: 'sending'
-                }, 'sent');
-                const messageData = {
-                    temp_id: tempId,
-                    recipient: STATE.activeContact,
-                    message: message
+        async function sendMessageWithRetry(messageData, retries = 3) {
+            return new Promise((resolve) => {
+                const trySend = (attempt = 0) => {
+                    if (STATE.socket.connected) {
+                        STATE.socket.emit('send_message', messageData, (ack) => {
+                            if (ack && ack.status === 'delivered') {
+                                resolve(true);
+                            } else {
+                                if (attempt < retries) {
+                                    setTimeout(() => trySend(attempt + 1), CONFIG.MESSAGE_RETRY_DELAY);
+                                } else {
+                                    resolve(false);
+                                }
+                            }
+                        });
+                    } else {
+                        if (attempt < retries) {
+                            setTimeout(() => trySend(attempt + 1), CONFIG.MESSAGE_RETRY_DELAY);
+                        } else {
+                            resolve(false);
+                        }
+                    }
                 };
-                STATE.pendingMessages[tempId] = messageData;
-                const success = await sendMessageWithRetry(messageData);
-                if (success) {
-                    delete STATE.pendingMessages[tempId];
-                } else {
-                    updateMessageStatus(tempId, null, 'failed');
-                }
-                ELEMENTS.messageInput.value = '';
-                ELEMENTS.messageInput.style.height = 'auto';
-            }
-
-            STATE.sendMessage = sendMessage;
+                trySend();
+            });
         }
 
-        function updateStatus(status, text) {
-            ELEMENTS.statusIndicator.className = 'status-indicator';
-            ELEMENTS.statusText.textContent = text;
-            switch(status) {
-                case 'connected':
-                    ELEMENTS.statusIndicator.classList.add('status-connected');
-                    break;
-                case 'disconnected':
-                    ELEMENTS.statusIndicator.classList.add('status-disconnected');
-                    break;
-                case 'error':
-                    ELEMENTS.statusIndicator.classList.add('status-processing');
-                    break;
+        async function sendMessage() {
+            const message = ELEMENTS.messageInput.value.trim();
+            if (!message || !STATE.activeContact) return;
+            
+            const tempId = `temp_${Date.now()}`;
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            addMessageToChat({
+                id: tempId,
+                sender: STATE.currentUser,
+                text: message,
+                timestamp: timestamp,
+                status: 'sending'
+            }, 'sent');
+            
+            const messageData = {
+                temp_id: tempId,
+                recipient: STATE.activeContact,
+                message: message
+            };
+            
+            STATE.pendingMessages[tempId] = messageData;
+            
+            const success = await sendMessageWithRetry(messageData);
+            if (success) {
+                delete STATE.pendingMessages[tempId];
+            } else {
+                updateMessageStatus(tempId, null, 'failed');
             }
+            
+            ELEMENTS.messageInput.value = '';
+            ELEMENTS.messageInput.style.height = 'auto';
         }
 
-        function showAppInterface() {
-            ELEMENTS.authScreen.style.display = 'none';
-            ELEMENTS.appScreen.style.display = 'flex';
-            ELEMENTS.userName.textContent = STATE.currentUser;
-            ELEMENTS.userAvatar.textContent = STATE.currentUser.charAt(0).toUpperCase();
-            STATE.socket.emit('get_online_users');
-            if (STATE.isMobile) {
-                ELEMENTS.contactsPanel.classList.remove('hidden');
-                ELEMENTS.chatContainer.classList.add('hidden');
-            }
-        }
+        STATE.sendMessage = sendMessage;
+    }
 
-        function updateContactsList(users) {
-            ELEMENTS.contactsList.innerHTML = '';
-            if (users.length === 0) {
-                ELEMENTS.contactsList.innerHTML = `
-                    <div class="no-contacts">
-                        <div style="text-align: center; padding: 30px; color: var(--text-secondary)">
-                            <i class="fas fa-user-friends" style="font-size: 40px; margin-bottom: 15px;"></i>
-                            <p>нет доступных контактов :(</p>
-                        </div>
+    function updateStatus(status, text) {
+        ELEMENTS.statusIndicator.className = 'status-indicator';
+        ELEMENTS.statusText.textContent = text;
+        
+        switch(status) {
+            case 'connected':
+                ELEMENTS.statusIndicator.classList.add('status-connected');
+                break;
+            case 'disconnected':
+                ELEMENTS.statusIndicator.classList.add('status-disconnected');
+                break;
+            case 'error':
+                ELEMENTS.statusIndicator.classList.add('status-processing');
+                break;
+        }
+    }
+
+    function showAppInterface() {
+        ELEMENTS.authScreen.style.display = 'none';
+        ELEMENTS.appScreen.style.display = 'flex';
+        
+        ELEMENTS.userName.textContent = STATE.currentUser;
+        ELEMENTS.userAvatar.textContent = STATE.currentUser.charAt(0).toUpperCase();
+        
+        STATE.socket.emit('get_online_users');
+        
+        if (STATE.isMobile) {
+            ELEMENTS.contactsPanel.classList.remove('hidden');
+            ELEMENTS.chatContainer.classList.add('hidden');
+        }
+    }
+
+    function updateContactsList(users) {
+        ELEMENTS.contactsList.innerHTML = '';
+        
+        if (users.length === 0) {
+            ELEMENTS.contactsList.innerHTML = `
+                <div class="no-contacts">
+                    <div style="text-align: center; padding: 30px; color: var(--text-secondary)">
+                        <i class="fas fa-user-friends" style="font-size: 40px; margin-bottom: 15px;"></i>
+                        <p>Нет доступных контактов</p>
                     </div>
-                `;
-                return;
-            }
-            users.forEach(username => {
-                if (username !== STATE.currentUser) {
-                    const contactElement = document.createElement('div');
-                    contactElement.className = 'contact';
-                    contactElement.dataset.username = username;
-                    contactElement.innerHTML = `
-                        <div class="contact-avatar">${username.charAt(0).toUpperCase()}</div>
-                        <div class="contact-info">
-                            <div class="contact-name">
-                                ${username}
-                                <span class="status-dot online"></span>
-                            </div>
-                            <div class="last-message" style="color: var(--online)">В сети</div>
-                        </div>
-                    `;
-                    contactElement.addEventListener('click', () => {
-                        selectContact(username);
-                    });
-                    ELEMENTS.contactsList.appendChild(contactElement);
-                }
-            });
-        }
-
-        function updateContactStatus(username, isOnline) {
-            const contact = ELEMENTS.contactsList.querySelector(`.contact[data-username="${username}"]`);
-            if (contact) {
-                const dot = contact.querySelector('.status-dot');
-                const statusText = contact.querySelector('.last-message');
-                if (dot) {
-                    dot.className = `status-dot ${isOnline ? 'online' : 'offline'}`;
-                }
-                if (statusText) {
-                    statusText.textContent = isOnline ? 'в сети ^-^' : 'не в сети >_<';
-                    statusText.style.color = isOnline ? 'var(--online)' : 'var(--offline)';
-                }
-            }
-        }
-
-        function selectContact(username) {
-            STATE.activeContact = username;
-            ELEMENTS.currentContact.innerHTML = username;
-            ELEMENTS.typingIndicator.style.display = 'none';
-            ELEMENTS.chatMessages.innerHTML = '';
-            document.querySelectorAll('.contact').forEach(el => {
-                el.classList.remove('active');
-            });
-            const contact = ELEMENTS.contactsList.querySelector(`.contact[data-username="${username}"]`);
-            if (contact) {
-                contact.classList.add('active');
-            }
-            STATE.socket.emit('get_message_history', {
-                contact: username
-            });
-            if (STATE.isMobile) {
-                ELEMENTS.contactsPanel.classList.add('hidden');
-                ELEMENTS.chatContainer.classList.remove('hidden');
-            }
-        }
-
-        function addMessageToChat(message, type) {
-            const messageElement = document.createElement('div');
-            messageElement.className = `message ${type}`;
-            messageElement.dataset.id = message.id;
-            let statusIcon = '';
-            if (type === 'sent') {
-                if (message.status === 'sending') {
-                    statusIcon = '<i class="fas fa-circle-notch fa-spin"></i>';
-                } else if (message.status === 'sent' || message.status === 'failed') {
-                    statusIcon = '<i class="fas fa-exclamation-circle"></i>';
-                } else if (message.status === 'delivered') {
-                    statusIcon = '<i class="fas fa-check"></i>';
-                } else {
-                    statusIcon = '<i class="fas fa-check-double"></i>';
-                }
-            }
-            messageElement.innerHTML = `
-                <div class="message-text">${message.text}</div>
-                <div class="message-time">
-                    ${message.timestamp}
-                    ${type === 'sent' ? `<span class="message-status">${statusIcon}</span>` : ''}
                 </div>
             `;
-            ELEMENTS.chatMessages.appendChild(messageElement);
-            ELEMENTS.chatMessages.scrollTop = ELEMENTS.chatMessages.scrollHeight;
+            return;
         }
+        
+        users.forEach(username => {
+            if (username !== STATE.currentUser) {
+                addContactToList(username, true);
+            }
+        });
+    }
 
-        function updateMessageStatus(tempId, messageId, status) {
-            const messageElement = ELEMENTS.chatMessages.querySelector(`.message[data-id="${tempId}"]`);
-            if (messageElement) {
-                if (messageId) messageElement.dataset.id = messageId;
-                let statusIcon = '';
-                if (status === 'sending') {
-                    statusIcon = '<i class="fas fa-circle-notch fa-spin"></i>';
-                } else if (status === 'sent' || status === 'failed') {
-                    statusIcon = '<i class="fas fa-exclamation-circle"></i>';
-                } else if (status === 'delivered') {
-                    statusIcon = '<i class="fas fa-check"></i>';
-                } else {
-                    statusIcon = '<i class="fas fa-check-double"></i>';
-                }
-                const statusElement = messageElement.querySelector('.message-status');
-                if (statusElement) {
-                    statusElement.innerHTML = statusIcon;
-                    statusElement.style.color = status === 'failed' ? 'var(--offline)' : 'inherit';
-                }
+    function addContactToList(username, isOnline) {
+        const contactElement = document.createElement('div');
+        contactElement.className = 'contact';
+        contactElement.dataset.username = username;
+        contactElement.innerHTML = `
+            <div class="contact-avatar">${username.charAt(0).toUpperCase()}</div>
+            <div class="contact-info">
+                <div class="contact-name">
+                    ${username}
+                    <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
+                </div>
+                <div class="last-message" style="color: ${isOnline ? 'var(--online)' : 'var(--offline)'}">
+                    ${isOnline ? 'В сети' : 'Не в сети'}
+                </div>
+            </div>
+        `;
+        contactElement.addEventListener('click', () => {
+            selectContact(username);
+        });
+        ELEMENTS.contactsList.appendChild(contactElement);
+    }
+
+    function updateContactStatus(username, isOnline) {
+        const contact = ELEMENTS.contactsList.querySelector(`.contact[data-username="${username}"]`);
+        if (contact) {
+            const dot = contact.querySelector('.status-dot');
+            const statusText = contact.querySelector('.last-message');
+            
+            if (dot) {
+                dot.className = `status-dot ${isOnline ? 'online' : 'offline'}`;
+            }
+            
+            if (statusText) {
+                statusText.textContent = isOnline ? 'В сети' : 'Не в сети';
+                statusText.style.color = isOnline ? 'var(--online)' : 'var(--offline)';
+            }
+        } else if (isOnline) {
+            addContactToList(username, true);
+        }
+    }
+
+    function selectContact(username) {
+        STATE.activeContact = username;
+        ELEMENTS.currentContact.innerHTML = username;
+        ELEMENTS.typingIndicator.style.display = 'none';
+        ELEMENTS.chatMessages.innerHTML = '';
+        
+        document.querySelectorAll('.contact').forEach(el => {
+            el.classList.remove('active');
+        });
+        
+        const contact = ELEMENTS.contactsList.querySelector(`.contact[data-username="${username}"]`);
+        if (contact) {
+            contact.classList.add('active');
+        }
+        
+        STATE.socket.emit('get_message_history', {
+            contact: username
+        });
+        
+        if (STATE.isMobile) {
+            ELEMENTS.contactsPanel.classList.add('hidden');
+            ELEMENTS.chatContainer.classList.remove('hidden');
+        }
+    }
+
+    function addMessageToChat(message, type) {
+        const messageElement = document.createElement('div');
+        messageElement.className = `message ${type}`;
+        messageElement.dataset.id = message.id;
+        
+        let statusIcon = '';
+        if (type === 'sent') {
+            if (message.status === 'sending') {
+                statusIcon = '<i class="fas fa-circle-notch fa-spin"></i>';
+            } else if (message.status === 'sent' || message.status === 'failed') {
+                statusIcon = '<i class="fas fa-exclamation-circle"></i>';
+            } else if (message.status === 'delivered') {
+                statusIcon = '<i class="fas fa-check"></i>';
+            } else {
+                statusIcon = '<i class="fas fa-check-double"></i>';
             }
         }
+        
+        messageElement.innerHTML = `
+            <div class="message-text">${message.text}</div>
+            <div class="message-time">
+                ${message.timestamp}
+                ${type === 'sent' ? `<span class="message-status">${statusIcon}</span>` : ''}
+            </div>
+        `;
+        
+        ELEMENTS.chatMessages.appendChild(messageElement);
+        ELEMENTS.chatMessages.scrollTop = ELEMENTS.chatMessages.scrollHeight;
+    }
 
-        function showNotification(message) {
-            const notification = document.createElement('div');
-            notification.className = 'notification';
-            notification.innerHTML = `
-                <div class="notification-icon"><i class="fas fa-info-circle"></i></div>
-                <div>${message}</div>
-            `;
-            document.body.appendChild(notification);
-            setTimeout(() => {
-                notification.remove();
-            }, 3000);
-        }
-
-        function playNotificationSound() {
-            try {
-                const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
-                audio.volume = 0.3;
-                audio.play().catch(e => console.log("Audio error"));
-            } catch (e) {
-                console.log("Audio error");
+    function updateMessageStatus(tempId, messageId, status) {
+        const messageElement = ELEMENTS.chatMessages.querySelector(`.message[data-id="${tempId}"]`);
+        if (messageElement) {
+            if (messageId) {
+                messageElement.dataset.id = messageId;
+            }
+            
+            let statusIcon = '';
+            if (status === 'sending') {
+                statusIcon = '<i class="fas fa-circle-notch fa-spin"></i>';
+            } else if (status === 'sent' || status === 'failed') {
+                statusIcon = '<i class="fas fa-exclamation-circle"></i>';
+            } else if (status === 'delivered') {
+                statusIcon = '<i class="fas fa-check"></i>';
+            } else {
+                statusIcon = '<i class="fas fa-check-double"></i>';
+            }
+            
+            const statusElement = messageElement.querySelector('.message-status');
+            if (statusElement) {
+                statusElement.innerHTML = statusIcon;
+                statusElement.style.color = status === 'failed' ? 'var(--offline)' : 'inherit';
             }
         }
+    }
 
-        function retryPendingMessages() {
-            Object.values(STATE.pendingMessages).forEach(async (messageData) => {
-                const success = await sendMessageWithRetry(messageData);
-                if (success) {
-                    delete STATE.pendingMessages[messageData.temp_id];
-                }
-            });
+    function showNotification(message) {
+        const notification = document.createElement('div');
+        notification.className = 'notification';
+        notification.innerHTML = `
+            <div class="notification-icon"><i class="fas fa-info-circle"></i></div>
+            <div>${message}</div>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+
+    function playNotificationSound() {
+        try {
+            const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
+            audio.volume = 0.3;
+            audio.play().catch(e => console.log("Audio error"));
+        } catch (e) {
+            console.log("Audio error");
         }
+    }
 
-        function initEventListeners() {
-            ELEMENTS.loginBtn.addEventListener('click', () => {
-                const username = document.getElementById('loginUsername').value.trim();
-                const password = document.getElementById('loginPassword').value;
-                if (!username || !password) {
-                    showNotification('заполни все поля!');
-                    return;
-                }
-                localStorage.setItem('messenger_password', password);
-                STATE.socket.emit('login', { username, password });
-            });
-            
-            ELEMENTS.registerBtn.addEventListener('click', () => {
-                const username = document.getElementById('registerUsername').value.trim();
-                const password = document.getElementById('registerPassword').value;
-                const confirm = document.getElementById('registerConfirm').value;
-                if (!username || !password || !confirm) {
-                    showNotification('заполни все поля!');
-                    return;
-                }
-                if (password !== confirm) {
-                    showNotification('пароли не совпадают(');
-                    return;
-                }
-                STATE.socket.emit('register', { username, password });
-            });
-            
-            ELEMENTS.showRegister.addEventListener('click', () => {
-                ELEMENTS.loginForm.style.display = 'none';
-                ELEMENTS.registerForm.style.display = 'block';
-            });
-            
-            ELEMENTS.showLogin.addEventListener('click', () => {
-                ELEMENTS.registerForm.style.display = 'none';
-                ELEMENTS.loginForm.style.display = 'block';
-            });
-            
-            ELEMENTS.logoutBtn.addEventListener('click', () => {
-                localStorage.removeItem('messenger_user');
-                localStorage.removeItem('messenger_password');
-                location.reload();
-            });
-            
-            ELEMENTS.sendBtn.addEventListener('click', STATE.sendMessage);
-            
-            ELEMENTS.messageInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    STATE.sendMessage();
-                }
-            });
-            
-            ELEMENTS.messageInput.addEventListener('input', () => {
-                if (!STATE.activeContact) return;
-                STATE.socket.emit('start_typing', {
-                    recipient: STATE.activeContact
-                });
-                clearTimeout(STATE.typingTimeout);
-                STATE.typingTimeout = setTimeout(() => {
-                    STATE.socket.emit('stop_typing', {
-                        recipient: STATE.activeContact
-                    });
-                }, CONFIG.TYPING_TIMEOUT);
-                ELEMENTS.messageInput.style.height = 'auto';
-                ELEMENTS.messageInput.style.height = Math.min(ELEMENTS.messageInput.scrollHeight, 150) + 'px';
-            });
-            
-            ELEMENTS.searchContact.addEventListener('input', (e) => {
-                const term = e.target.value.toLowerCase();
-                document.querySelectorAll('.contact').forEach(contact => {
-                    const username = contact.dataset.username.toLowerCase();
-                    contact.style.display = username.includes(term) ? 'flex' : 'none';
-                });
-            });
-            
-            ELEMENTS.menuBtn.addEventListener('click', () => {
-                ELEMENTS.contactsPanel.classList.remove('hidden');
-                ELEMENTS.chatContainer.classList.add('hidden');
-            });
-            
-            ELEMENTS.backBtn.addEventListener('click', () => {
-                ELEMENTS.contactsPanel.classList.remove('hidden');
-                ELEMENTS.chatContainer.classList.add('hidden');
-            });
-            
-            window.addEventListener('resize', () => {
-                STATE.isMobile = window.innerWidth <= 768;
-            });
-        }
+    function retryPendingMessages() {
+        Object.values(STATE.pendingMessages).forEach(async (messageData) => {
+            const success = await sendMessageWithRetry(messageData);
+            if (success) {
+                delete STATE.pendingMessages[messageData.temp_id];
+            }
+        });
+    }
 
-        function renderMessageHistory(messages) {
-            ELEMENTS.chatMessages.innerHTML = '';
-            if (messages.length === 0) {
-                ELEMENTS.chatMessages.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: var(--text-secondary)">
-                        <i class="fas fa-comments" style="font-size: 40px; margin-bottom: 15px;"></i>
-                        <p>начни общение с ${STATE.activeContact}!</p>
-                    </div>
-                `;
+    function initEventListeners() {
+        ELEMENTS.loginBtn.addEventListener('click', () => {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+            
+            if (!username || !password) {
+                showNotification('Заполните все поля');
                 return;
             }
-            messages.forEach(msg => {
-                const type = msg.sender === STATE.currentUser ? 'sent' : 'received';
-                addMessageToChat(msg, type);
-            });
-        }
-
-        function requestNotificationPermission() {
-            if (!('Notification' in window)) return;
-            if (Notification.permission !== 'granted') {
-                Notification.requestPermission();
-            }
-        }
-
-        function initApp() {
-            initSocket();
-            initEventListeners();
-            updateStatus('processing', 'подключение...');
-            requestNotificationPermission();
-        }
-
-        window.addEventListener('DOMContentLoaded', function() {
-            const conChars = document.querySelectorAll('.con-text span');
-            conChars.forEach((char, index) => {
-                char.style.animationDelay = `${1.2 + index * 0.15}s`;
-            });
-            setTimeout(function() {
-                document.getElementById('splashScreen').style.display = 'none';
-                document.querySelector('.container').style.display = 'flex';
-                document.querySelector('.status-bar').style.display = 'flex';
-            }, 7000);
-            initApp();
+            
+            localStorage.setItem('messenger_password', password);
+            STATE.socket.emit('login', { username, password });
         });
+        
+        ELEMENTS.registerBtn.addEventListener('click', () => {
+            const username = document.getElementById('registerUsername').value.trim();
+            const password = document.getElementById('registerPassword').value;
+            const confirm = document.getElementById('registerConfirm').value;
+            
+            if (!username || !password || !confirm) {
+                showNotification('Заполните все поля');
+                return;
+            }
+            
+            if (password !== confirm) {
+                showNotification('Пароли не совпадают');
+                return;
+            }
+            
+            STATE.socket.emit('register', { username, password });
+        });
+        
+        ELEMENTS.showRegister.addEventListener('click', () => {
+            ELEMENTS.loginForm.style.display = 'none';
+            ELEMENTS.registerForm.style.display = 'block';
+        });
+        
+        ELEMENTS.showLogin.addEventListener('click', () => {
+            ELEMENTS.registerForm.style.display = 'none';
+            ELEMENTS.loginForm.style.display = 'block';
+        });
+        
+        ELEMENTS.logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('messenger_user');
+            localStorage.removeItem('messenger_password');
+            location.reload();
+        });
+        
+        ELEMENTS.sendBtn.addEventListener('click', STATE.sendMessage);
+        
+        ELEMENTS.messageInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                STATE.sendMessage();
+            }
+        });
+        
+        ELEMENTS.messageInput.addEventListener('input', () => {
+            if (!STATE.activeContact) return;
+            
+            STATE.socket.emit('start_typing', {
+                recipient: STATE.activeContact
+            });
+            
+            clearTimeout(STATE.typingTimeout);
+            STATE.typingTimeout = setTimeout(() => {
+                STATE.socket.emit('stop_typing', {
+                    recipient: STATE.activeContact
+                });
+            }, CONFIG.TYPING_TIMEOUT);
+            
+            ELEMENTS.messageInput.style.height = 'auto';
+            ELEMENTS.messageInput.style.height = Math.min(ELEMENTS.messageInput.scrollHeight, 150) + 'px';
+        });
+        
+        ELEMENTS.searchContact.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            document.querySelectorAll('.contact').forEach(contact => {
+                const username = contact.dataset.username.toLowerCase();
+                contact.style.display = username.includes(term) ? 'flex' : 'none';
+            });
+        });
+        
+        ELEMENTS.menuBtn.addEventListener('click', () => {
+            ELEMENTS.contactsPanel.classList.remove('hidden');
+            ELEMENTS.chatContainer.classList.add('hidden');
+        });
+        
+        ELEMENTS.backBtn.addEventListener('click', () => {
+            ELEMENTS.contactsPanel.classList.remove('hidden');
+            ELEMENTS.chatContainer.classList.add('hidden');
+        });
+        
+        window.addEventListener('resize', () => {
+            STATE.isMobile = window.innerWidth <= 768;
+        });
+    }
+
+    function renderMessageHistory(messages) {
+        ELEMENTS.chatMessages.innerHTML = '';
+        STATE.receivedMessages.clear();
+        
+        if (messages.length === 0) {
+            ELEMENTS.chatMessages.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary)">
+                    <i class="fas fa-comments" style="font-size: 40px; margin-bottom: 15px;"></i>
+                    <p>Начните общение с ${STATE.activeContact}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        messages.forEach(msg => {
+            STATE.receivedMessages.add(msg.id);
+            const type = msg.sender === STATE.currentUser ? 'sent' : 'received';
+            addMessageToChat(msg, type);
+        });
+    }
+
+    function requestNotificationPermission() {
+        if (!('Notification' in window)) return;
+        if (Notification.permission !== 'granted') {
+            Notification.requestPermission();
+        }
+    }
+
+    function initApp() {
+        initSocket();
+        initEventListeners();
+        updateStatus('processing', 'Подключение...');
+        requestNotificationPermission();
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+        const conChars = document.querySelectorAll('.con-text span');
+        conChars.forEach((char, index) => {
+            char.style.animationDelay = `${1.2 + index * 0.15}s`;
+        });
+        
+        setTimeout(function() {
+            document.getElementById('splashScreen').style.display = 'none';
+            document.querySelector('.container').style.display = 'flex';
+            document.querySelector('.status-bar').style.display = 'flex';
+        }, 7000);
+        
+        initApp();
+    });
     </script>
 </body>
 </html>
