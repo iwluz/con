@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>>_ Messenger</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
+        }
+        
+        :root {
+            --primary: #4285F4;
+            --primary-dark: #3367D6;
+            --surface: #FFFFFF;
+            --background: #F5F5F5;
+            --on-surface: #212121;
+            --on-surface-medium: #5F6368;
+            --on-surface-light: #9AA0A6;
+            --divider: #E0E0E0;
+            --error: #EA4335;
+            --success: #34A853;
+            --warning: #FBBC05;
+            --elevation-1: 0 1px 2px rgba(0,0,0,0.1), 0 1px 1px rgba(0,0,0,0.06);
+            --elevation-2: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+            --elevation-3: 0 6px 20px rgba(0,0,0,0.12), 0 3px 6px rgba(0,0,0,0.08);
+            --border-radius: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        
+        body {
+            background-color: var(--background);
+            color: var(--on-surface);
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            height: 95vh;
+            background-color: var(--surface);
+            border-radius: var(--border-radius);
+            box-shadow: var(--elevation-3);
+            display: flex;
+            overflow: hidden;
+            border: 1px solid var(--divider);
+        }
+        
+        .auth-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 40px;
+            background-color: var(--background);
+            position: relative;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            margin-bottom: 40px;
+            z-index: 1;
+        }
+        
+        .logo-icon {
+            font-size: 48px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--on-surface);
+            margin-right: 15px;
+            font-weight: 700;
+        }
+        
+        .auth-box {
+            background-color: var(--surface);
+            border-radius: var(--border-radius);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: var(--elevation-2);
+            z-index: 1;
+            transition: var(--transition);
+        }
+        
+        .auth-title {
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 24px;
+            font-weight: 500;
+            color: var(--on-surface);
+        }
+        
+        .input-group {
+            margin-bottom: 24px;
+            position: relative;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--on-surface-medium);
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            background-color: transparent;
+            border: 1px solid var(--divider);
+            border-radius: var(--border-radius);
+            color: var(--on-surface);
+            font-size: 16px;
+            transition: var(--transition);
+            outline: none;
+        }
+        
+        input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--elevation-1);
+        }
+        
+        .btn:hover {
+            background-color: var(--primary-dark);
+            box-shadow: var(--elevation-2);
+            transform: translateY(-1px);
+        }
+        
+        .auth-toggle {
+            text-align: center;
+            margin-top: 24px;
+            color: var(--on-surface-medium);
+            font-size: 14px;
+        }
+        
+        .auth-toggle a {
+            color: var(--primary);
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+        
+        .auth-toggle a:hover {
+            text-decoration: underline;
+        }
+        
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--surface);
+            padding: 10px 20px;
+            font-size: 14px;
+            color: var(--on-surface-medium);
+            border-top: 1px solid var(--divider);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-connected {
+            background-color: var(--success);
+        }
+        
+        .status-disconnected {
+            background-color: var(--error);
+        }
+        
+        .status-processing {
+            background-color: var(--warning);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .app-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+        }
+        
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--divider);
+            background-color: var(--surface);
+            z-index: 10;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 500;
+            color: white;
+            margin-right: 12px;
+            font-size: 18px;
+        }
+        
+        .username {
+            font-weight: 500;
+            font-size: 16px;
+        }
+        
+        .logout-btn {
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            padding: 8px 16px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logout-btn:hover {
+            background-color: rgba(66, 133, 244, 0.1);
+        }
+        
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        
+        .contacts-panel {
+            width: 300px;
+            border-right: 1px solid var(--divider);
+            overflow-y: auto;
+            background-color: var(--surface);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .contacts-header {
+            padding: 20px 24px 16px;
+            font-weight: 500;
+            font-size: 18px;
+            color: var(--on-surface);
+            border-bottom: 1px solid var(--divider);
+        }
+        
+        .search-box {
+            position: relative;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--divider);
+        }
+        
+        .search-box input {
+            padding-left: 40px;
+        }
+        
+        .search-box i {
+            position: absolute;
+            left: 40px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--on-surface-light);
+        }
+        
+        .contacts-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .contact {
+            display: flex;
+            align-items: center;
+            padding: 16px 24px;
+            cursor: pointer;
+            transition: var(--transition);
+            position: relative;
+            border-bottom: 1px solid var(--divider);
+        }
+        
+        .contact:hover {
+            background-color: rgba(0, 0, 0, 0.03);
+        }
+        
+        .contact.active {
+            background-color: rgba(66, 133, 244, 0.08);
+        }
+        
+        .contact-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 500;
+            color: white;
+            margin-right: 16px;
+            font-size: 18px;
+        }
+        
+        .contact-info {
+            flex: 1;
+        }
+        
+        .contact-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .online-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            margin-left: 8px;
+        }
+        
+        .offline-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background-color: var(--on-surface-light);
+            border-radius: 50%;
+            margin-left: 8px;
+        }
+        
+        .last-message {
+            color: var(--on-surface-medium);
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--background);
+        }
+        
+        .chat-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--divider);
+            display: flex;
+            align-items: center;
+            background-color: var(--surface);
+            z-index: 5;
+        }
+        
+        .current-contact {
+            font-weight: 500;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .typing-indicator {
+            margin-left: 12px;
+            color: var(--on-surface-medium);
+            font-size: 14px;
+            font-style: italic;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--background);
+        }
+        
+        .message {
+            max-width: 70%;
+            padding: 12px 16px;
+            margin-bottom: 16px;
+            border-radius: 18px;
+            position: relative;
+            animation: fadeIn 0.3s;
+            word-wrap: break-word;
+            line-height: 1.5;
+            box-shadow: var(--elevation-1);
+        }
+        
+        .message.sent {
+            align-self: flex-end;
+            background-color: var(--primary);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.received {
+            align-self: flex-start;
+            background-color: var(--surface);
+            color: var(--on-surface);
+            border-bottom-left-radius: 4px;
+            box-shadow: var(--elevation-1);
+        }
+        
+        .message-time {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 6px;
+            text-align: right;
+        }
+        
+        .message.sent .message-time {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .chat-input-container {
+            padding: 16px 24px;
+            background-color: var(--surface);
+            border-top: 1px solid var(--divider);
+        }
+        
+        .chat-input-box {
+            display: flex;
+            align-items: center;
+            background-color: var(--background);
+            border-radius: 24px;
+            padding: 4px 4px 4px 20px;
+            box-shadow: var(--elevation-1);
+        }
+        
+        .message-input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 12px 0;
+            resize: none;
+            height: 24px;
+            max-height: 120px;
+            font-family: 'Roboto', sans-serif;
+            outline: none;
+            color: var(--on-surface);
+        }
+        
+        .send-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: var(--elevation-1);
+        }
+        
+        .send-btn:hover {
+            background-color: var(--primary-dark);
+            transform: scale(1.05);
+        }
+        
+        .send-btn:disabled {
+            background-color: var(--on-surface-light);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: var(--surface);
+            color: var(--on-surface);
+            padding: 16px 24px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--elevation-3);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s, fadeOut 0.3s 2.7s forwards;
+            border-left: 4px solid var(--primary);
+        }
+        
+        .notification-icon {
+            font-size: 20px;
+            color: var(--primary);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; visibility: hidden; }
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .contacts-panel {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Аутентификация -->
+        <div class="auth-container" id="authScreen">
+            <div class="logo">
+                <div class="logo-icon">>_</div>
+            </div>
+            
+            <div class="auth-box" id="loginForm">
+                <div class="auth-title">Вход в >_ Messenger</div>
+                <div class="input-group">
+                    <label for="loginUsername">Имя пользователя</label>
+                    <input type="text" id="loginUsername" placeholder="Ваш никнейм" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label for="loginPassword">Пароль</label>
+                    <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="off">
+                </div>
+                <button class="btn" id="loginBtn">Войти</button>
+                <div class="auth-toggle">
+                    Нет аккаунта? <a id="showRegister">Создать</a>
+                </div>
+            </div>
+            
+            <div class="auth-box" id="registerForm" style="display: none;">
+                <div class="auth-title">Регистрация</div>
+                <div class="input-group">
+                    <label for="registerUsername">Имя пользователя</label>
+                    <input type="text" id="registerUsername" placeholder="Придумайте никнейм" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label for="registerPassword">Пароль</label>
+                    <input type="password" id="registerPassword" placeholder="••••••••" autocomplete="off">
+                </div>
+                <div class="input-group">
+                    <label for="registerConfirm">Подтвердите пароль</label>
+                    <input type="password" id="registerConfirm" placeholder="••••••••" autocomplete="off">
+                </div>
+                <button class="btn" id="registerBtn">Создать аккаунт</button>
+                <div class="auth-toggle">
+                    Уже есть аккаунт? <a id="showLogin">Войти</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Основной интерфейс -->
+        <div class="app-container" id="appScreen">
+            <div class="top-bar">
+                <div class="user-info">
+                    <div class="avatar" id="userAvatar">U</div>
+                    <div class="username" id="userName">User</div>
+                </div>
+                <button class="logout-btn" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i> Выйти
+                </button>
+            </div>
+            
+            <div class="main-content">
+                <div class="contacts-panel">
+                    <div class="contacts-header">
+                        Контакты
+                    </div>
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchContact" placeholder="Поиск контактов..." autocomplete="off">
+                    </div>
+                    <div class="contacts-list" id="contactsList">
+                        <!-- Контакты загружаются динамически -->
+                    </div>
+                </div>
+                
+                <div class="chat-container">
+                    <div class="chat-header">
+                        <div class="current-contact" id="currentContact">
+                            Выберите контакт
+                            <span class="typing-indicator" id="typingIndicator" style="display: none;">печатает...</span>
+                        </div>
+                    </div>
+                    
+                    <div class="chat-messages" id="chatMessages">
+                        <!-- Сообщения загружаются динамически -->
+                    </div>
+                    
+                    <div class="chat-input-container">
+                        <div class="chat-input-box">
+                            <textarea 
+                                class="message-input" 
+                                id="messageInput" 
+                                placeholder="Введите сообщение..." 
+                                rows="1"
+                                autocomplete="off"
+                            ></textarea>
+                            <button class="send-btn" id="sendBtn">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-indicator" id="statusIndicator"></span>
+            <span id="statusText">Подключение...</span>
+        </div>
+        <div class="status-item">
+            <span id="connectionInfo">>_ Messenger v1.0</span>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        // Конфигурация
+        const CONFIG = {
+            RECONNECT_DELAY: 3000,
+            MAX_RECONNECTS: 10,
+            TYPING_TIMEOUT: 2000
+        };
+
+        // Состояние приложения
+        const STATE = {
+            currentUser: null,
+            activeContact: null,
+            socket: null,
+            reconnectAttempts: 0,
+            typingTimeout: null,
+            messageQueue: []
+        };
+
+        // DOM элементы
+        const ELEMENTS = {
+            authScreen: document.getElementById('authScreen'),
+            appScreen: document.getElementById('appScreen'),
+            loginForm: document.getElementById('loginForm'),
+            registerForm: document.getElementById('registerForm'),
+            statusIndicator: document.getElementById('statusIndicator'),
+            statusText: document.getElementById('statusText'),
+            loginBtn: document.getElementById('loginBtn'),
+            registerBtn: document.getElementById('registerBtn'),
+            showRegister: document.getElementById('showRegister'),
+            showLogin: document.getElementById('showLogin'),
+            logoutBtn: document.getElementById('logoutBtn'),
+            userAvatar: document.getElementById('userAvatar'),
+            userName: document.getElementById('userName'),
+            contactsList: document.getElementById('contactsList'),
+            currentContact: document.getElementById('currentContact'),
+            chatMessages: document.getElementById('chatMessages'),
+            messageInput: document.getElementById('messageInput'),
+            sendBtn: document.getElementById('sendBtn'),
+            typingIndicator: document.getElementById('typingIndicator'),
+            searchContact: document.getElementById('searchContact')
+        };
+
+        // Инициализация Socket.IO
+        function initSocket() {
+            const serverUrl = window.location.origin;
+            STATE.socket = io(serverUrl, {
+                reconnection: true,
+                reconnectionAttempts: CONFIG.MAX_RECONNECTS,
+                reconnectionDelay: CONFIG.RECONNECT_DELAY,
+                transports: ['websocket'],
+                autoConnect: true
+            });
+
+            // Обработчики событий
+            STATE.socket.on('connect', () => {
+                updateStatus('connected', 'Онлайн');
+                STATE.reconnectAttempts = 0;
+                processMessageQueue();
+            });
+
+            STATE.socket.on('disconnect', () => {
+                updateStatus('disconnected', 'Отключено');
+            });
+
+            STATE.socket.on('connect_error', () => {
+                updateStatus('error', 'Ошибка подключения');
+            });
+
+            STATE.socket.on('auth_success', (data) => {
+                STATE.currentUser = data.username;
+                showAppInterface();
+            });
+
+            STATE.socket.on('auth_error', (error) => {
+                showNotification(`Ошибка: ${error}`);
+            });
+
+            STATE.socket.on('reg_success', (message) => {
+                showNotification(message);
+                showLoginForm();
+            });
+
+            STATE.socket.on('reg_error', (error) => {
+                showNotification(`Ошибка: ${error}`);
+            });
+
+            STATE.socket.on('online_users', (users) => {
+                updateContactsList(users);
+            });
+
+            STATE.socket.on('user_online', (username) => {
+                updateContactStatus(username, true);
+            });
+
+            STATE.socket.on('user_offline', (username) => {
+                updateContactStatus(username, false);
+            });
+
+            STATE.socket.on('new_message', (message) => {
+                if (message.recipient === STATE.currentUser) {
+                    addMessageToChat(message, 'received');
+                    playNotificationSound();
+                }
+            });
+
+            STATE.socket.on('message_sent', (data) => {
+                updateMessageStatus(data.temp_id, data.message_id, data.status);
+            });
+
+            STATE.socket.on('message_history', (data) => {
+                if (data.contact === STATE.activeContact) {
+                    renderMessageHistory(data.messages);
+                }
+            });
+
+            STATE.socket.on('typing_start', (data) => {
+                if (data.sender === STATE.activeContact) {
+                    ELEMENTS.typingIndicator.textContent = `${data.sender} печатает...`;
+                    ELEMENTS.typingIndicator.style.display = 'inline';
+                }
+            });
+
+            STATE.socket.on('typing_stop', (data) => {
+                if (data.sender === STATE.activeContact) {
+                    ELEMENTS.typingIndicator.style.display = 'none';
+                }
+            });
+        }
+
+        // Обновление статуса
+        function updateStatus(status, text) {
+            ELEMENTS.statusIndicator.className = 'status-indicator';
+            ELEMENTS.statusText.textContent = text;
+            
+            switch(status) {
+                case 'connected':
+                    ELEMENTS.statusIndicator.classList.add('status-connected');
+                    break;
+                case 'disconnected':
+                    ELEMENTS.statusIndicator.classList.add('status-disconnected');
+                    break;
+                case 'error':
+                    ELEMENTS.statusIndicator.classList.add('status-processing');
+                    break;
+            }
+        }
+
+        // Показать интерфейс приложения
+        function showAppInterface() {
+            ELEMENTS.authScreen.style.display = 'none';
+            ELEMENTS.appScreen.style.display = 'flex';
+            
+            ELEMENTS.userName.textContent = STATE.currentUser;
+            ELEMENTS.userAvatar.textContent = STATE.currentUser.charAt(0).toUpperCase();
+            
+            // Запрос списка онлайн-пользователей
+            STATE.socket.emit('get_online_users');
+        }
+
+        // Обновление списка контактов
+        function updateContactsList(users) {
+            ELEMENTS.contactsList.innerHTML = '';
+            
+            users.forEach(username => {
+                if (username !== STATE.currentUser) {
+                    const contactElement = document.createElement('div');
+                    contactElement.className = 'contact';
+                    contactElement.dataset.username = username;
+                    contactElement.innerHTML = `
+                        <div class="contact-avatar">${username.charAt(0).toUpperCase()}</div>
+                        <div class="contact-info">
+                            <div class="contact-name">
+                                ${username}
+                                <span class="online-dot"></span>
+                            </div>
+                            <div class="last-message">В сети</div>
+                        </div>
+                    `;
+                    contactElement.addEventListener('click', () => {
+                        selectContact(username);
+                    });
+                    ELEMENTS.contactsList.appendChild(contactElement);
+                }
+            });
+        }
+
+        // Обновление статуса контакта
+        function updateContactStatus(username, isOnline) {
+            const contact = ELEMENTS.contactsList.querySelector(`.contact[data-username="${username}"]`);
+            if (contact) {
+                const dot = contact.querySelector('.online-dot');
+                const statusText = contact.querySelector('.last-message');
+                
+                if (dot) {
+                    dot.className = isOnline ? 'online-dot' : 'offline-dot';
+                }
+                
+                if (statusText) {
+                    statusText.textContent = isOnline ? 'В сети' : 'Не в сети';
+                }
+            }
+        }
+
+        // Выбор контакта
+        function selectContact(username) {
+            STATE.activeContact = username;
+            ELEMENTS.currentContact.innerHTML = username;
+            ELEMENTS.typingIndicator.style.display = 'none';
+            ELEMENTS.chatMessages.innerHTML = '';
+            
+            // Сброс активного контакта
+            document.querySelectorAll('.contact').forEach(el => {
+                el.classList.remove('active');
+            });
+            
+            // Активация выбранного
+            const contact = ELEMENTS.contactsList.querySelector(`.contact[data-username="${username}"]`);
+            if (contact) {
+                contact.classList.add('active');
+            }
+            
+            // Запрос истории сообщений
+            STATE.socket.emit('get_message_history', {
+                contact: username
+            });
+        }
+
+        // Отправка сообщения
+        function sendMessage() {
+            const message = ELEMENTS.messageInput.value.trim();
+            if (!message || !STATE.activeContact) return;
+            
+            const tempId = `temp_${Date.now()}`;
+            const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            
+            // Добавление временного сообщения
+            addMessageToChat({
+                id: tempId,
+                sender: STATE.currentUser,
+                text: message,
+                timestamp: timestamp,
+                status: 'sending'
+            }, 'sent');
+            
+            // Подготовка данных
+            const messageData = {
+                temp_id: tempId,
+                recipient: STATE.activeContact,
+                message: message
+            };
+            
+            // Отправка или постановка в очередь
+            if (STATE.socket.connected) {
+                STATE.socket.emit('send_message', messageData);
+            } else {
+                STATE.messageQueue.push(messageData);
+            }
+            
+            // Сброс поля ввода
+            ELEMENTS.messageInput.value = '';
+            ELEMENTS.messageInput.style.height = 'auto';
+        }
+
+        // Добавление сообщения в чат
+        function addMessageToChat(message, type) {
+            const messageElement = document.createElement('div');
+            messageElement.className = `message ${type}`;
+            messageElement.dataset.id = message.id;
+            
+            messageElement.innerHTML = `
+                <div class="message-text">${message.text}</div>
+                <div class="message-time">${message.timestamp}</div>
+            `;
+            
+            ELEMENTS.chatMessages.appendChild(messageElement);
+            ELEMENTS.chatMessages.scrollTop = ELEMENTS.chatMessages.scrollHeight;
+        }
+
+        // Обновление статуса сообщения
+        function updateMessageStatus(tempId, messageId, status) {
+            const messageElement = ELEMENTS.chatMessages.querySelector(`.message[data-id="${tempId}"]`);
+            if (messageElement) {
+                messageElement.dataset.id = messageId;
+                
+                let statusText = '';
+                if (status === 'sending') {
+                    statusText = 'Отправка...';
+                } else if (status === 'sent') {
+                    statusText = 'Доставлено';
+                } else {
+                    statusText = 'Прочитано';
+                }
+                
+                const statusElement = document.createElement('div');
+                statusElement.className = 'message-status';
+                statusElement.textContent = statusText;
+                statusElement.style.fontSize = '10px';
+                statusElement.style.opacity = '0.7';
+                statusElement.style.marginTop = '4px';
+                
+                messageElement.querySelector('.message-time').appendChild(statusElement);
+            }
+        }
+
+        // Показать уведомление
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.innerHTML = `
+                <div class="notification-icon"><i class="fas fa-info-circle"></i></div>
+                <div>${message}</div>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Воспроизвести звук уведомления
+        function playNotificationSound() {
+            try {
+                const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
+                audio.volume = 0.3;
+                audio.play().catch(e => console.log("Audio play error:", e));
+            } catch (e) {
+                console.log("Audio error:", e);
+            }
+        }
+
+        // Обработка очереди сообщений
+        function processMessageQueue() {
+            while (STATE.messageQueue.length > 0 && STATE.socket.connected) {
+                STATE.socket.emit('send_message', STATE.messageQueue.shift());
+            }
+        }
+
+        // Инициализация обработчиков событий
+        function initEventListeners() {
+            // Формы аутентификации
+            ELEMENTS.loginBtn.addEventListener('click', () => {
+                const username = document.getElementById('loginUsername').value.trim();
+                const password = document.getElementById('loginPassword').value;
+                
+                if (!username || !password) {
+                    showNotification('Заполните все поля');
+                    return;
+                }
+                
+                STATE.socket.emit('login', { username, password });
+            });
+            
+            ELEMENTS.registerBtn.addEventListener('click', () => {
+                const username = document.getElementById('registerUsername').value.trim();
+                const password = document.getElementById('registerPassword').value;
+                const confirm = document.getElementById('registerConfirm').value;
+                
+                if (!username || !password || !confirm) {
+                    showNotification('Заполните все поля');
+                    return;
+                }
+                
+                if (password !== confirm) {
+                    showNotification('Пароли не совпадают');
+                    return;
+                }
+                
+                STATE.socket.emit('register', { username, password });
+            });
+            
+            ELEMENTS.showRegister.addEventListener('click', () => {
+                ELEMENTS.loginForm.style.display = 'none';
+                ELEMENTS.registerForm.style.display = 'block';
+            });
+            
+            ELEMENTS.showLogin.addEventListener('click', () => {
+                ELEMENTS.registerForm.style.display = 'none';
+                ELEMENTS.loginForm.style.display = 'block';
+            });
+            
+            ELEMENTS.logoutBtn.addEventListener('click', () => {
+                location.reload();
+            });
+            
+            // Система сообщений
+            ELEMENTS.sendBtn.addEventListener('click', sendMessage);
+            
+            ELEMENTS.messageInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+            
+            ELEMENTS.messageInput.addEventListener('input', () => {
+                if (!STATE.activeContact) return;
+                
+                STATE.socket.emit('start_typing', {
+                    recipient: STATE.activeContact
+                });
+                
+                clearTimeout(STATE.typingTimeout);
+                STATE.typingTimeout = setTimeout(() => {
+                    STATE.socket.emit('stop_typing', {
+                        recipient: STATE.activeContact
+                    });
+                }, CONFIG.TYPING_TIMEOUT);
+                
+                // Авторазмер текстового поля
+                ELEMENTS.messageInput.style.height = 'auto';
+                ELEMENTS.messageInput.style.height = Math.min(ELEMENTS.messageInput.scrollHeight, 150) + 'px';
+            });
+            
+            // Поиск контактов
+            ELEMENTS.searchContact.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase();
+                document.querySelectorAll('.contact').forEach(contact => {
+                    const username = contact.dataset.username.toLowerCase();
+                    contact.style.display = username.includes(term) ? 'flex' : 'none';
+                });
+            });
+        }
+
+        // Рендер истории сообщений
+        function renderMessageHistory(messages) {
+            ELEMENTS.chatMessages.innerHTML = '';
+            
+            messages.forEach(msg => {
+                const type = msg.sender === STATE.currentUser ? 'sent' : 'received';
+                addMessageToChat(msg, type);
+            });
+        }
+
+        // Инициализация приложения
+        function initApp() {
+            initSocket();
+            initEventListeners();
+            updateStatus('processing', 'Подключение...');
+        }
+
+        // Запуск после загрузки страницы
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
