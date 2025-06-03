@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>>_ Messenger</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -35,6 +36,185 @@
             display: flex;
             justify-content: center;
             align-items: center;
+        }
+        
+        #splashScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: 
+                radial-gradient(circle at 15% 25%, rgba(25, 25, 45, 0.8) 0%, transparent 40%),
+                radial-gradient(circle at 85% 75%, rgba(35, 35, 65, 0.7) 0%, transparent 40%),
+                linear-gradient(135deg, #0c0c14, #131320);
+            overflow: hidden;
+            font-family: 'Roboto', sans-serif;
+            z-index: 10000;
+        }
+        
+        .center-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .animation-container {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            width: 400px;
+        }
+        
+        .symbols {
+            position: absolute;
+            color: #fff;
+            font-size: 84px;
+            font-weight: 300;
+            opacity: 0;
+            transform: translateY(150px);
+            animation: 
+                riseUp 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+                moveRight 0.8s 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            z-index: 10;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: -4px;
+        }
+        
+        .con-text {
+            position: absolute;
+            color: #fff;
+            font-size: 84px;
+            font-weight: 300;
+            opacity: 0;
+            transform: translateX(0);
+            animation: 
+                conAppear 1.2s 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+            z-index: 5;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: -4px;
+        }
+        
+        .con-text span {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInChar 0.4s forwards;
+        }
+        
+        .loading {
+            position: absolute;
+            display: flex;
+            gap: 10px;
+            opacity: 0;
+            transform: translateY(0);
+            animation: 
+                loadingAppear 0.6s 3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards,
+                loadingMoveDown 0.8s 3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        }
+        
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #aaa;
+            animation: pulseDot 1.5s infinite;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+        }
+        
+        .dot:nth-child(1) { animation-delay: 0s; }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes riseUp {
+            0% {
+                opacity: 0;
+                transform: translateY(150px);
+            }
+            70% {
+                opacity: 0.9;
+                transform: translateY(-15px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes moveRight {
+            0% {
+                transform: translateX(0);
+            }
+            100% {
+                transform: translateX(48px);
+            }
+        }
+        
+        @keyframes conAppear {
+            0% {
+                opacity: 0;
+                transform: translateX(0);
+            }
+            100% {
+                opacity: 1;
+                transform: translateX(-92px);
+            }
+        }
+        
+        @keyframes fadeInChar {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.9);
+            }
+            70% {
+                opacity: 0.7;
+                transform: translateY(-3px) scale(1.05);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+        
+        @keyframes loadingAppear {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+        
+        @keyframes loadingMoveDown {
+            0% {
+                transform: translateY(0);
+            }
+            100% {
+                transform: translateY(80px);
+            }
+        }
+        
+        @keyframes pulseDot {
+            0%, 100% {
+                background: #aaa;
+                transform: scale(1);
+            }
+            50% {
+                background: #fff;
+                transform: scale(1.2);
+            }
+        }
+        
+        .container, .status-bar {
+            display: none;
         }
         
         .container {
@@ -608,7 +788,6 @@
             background: var(--accent-hover);
         }
         
-        /* Мобильная адаптация */
         @media (max-width: 768px) {
             .container {
                 height: 100vh;
@@ -682,8 +861,21 @@
     </style>
 </head>
 <body>
+    <div id="splashScreen">
+        <div class="center-container">
+            <div class="animation-container">
+                <div class="symbols">&gt;_</div>
+                <div class="con-text"><span>c</span><span>o</span><span>n</span></div>
+                <div class="loading">
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
-        <!-- Аутентификация -->
         <div class="auth-container" id="authScreen">
             <div class="logo">
                 <div class="logo-icon">>_</div>
@@ -726,7 +918,6 @@
             </div>
         </div>
         
-        <!-- Основной интерфейс -->
         <div class="app-container" id="appScreen">
             <div class="top-bar">
                 <button class="menu-btn" id="menuBtn">
@@ -751,7 +942,6 @@
                         <input type="text" id="searchContact" placeholder="Поиск контактов..." autocomplete="off">
                     </div>
                     <div class="contacts-list" id="contactsList">
-                        <!-- Контакты загружаются динамически -->
                     </div>
                 </div>
                 
@@ -767,7 +957,6 @@
                     </div>
                     
                     <div class="chat-messages" id="chatMessages">
-                        <!-- Сообщения загружаются динамически -->
                     </div>
                     
                     <div class="chat-input-container">
@@ -801,14 +990,12 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
     <script>
-        // Конфигурация
         const CONFIG = {
             RECONNECT_DELAY: 3000,
             MAX_RECONNECTS: 10,
             TYPING_TIMEOUT: 2000
         };
 
-        // Состояние приложения
         const STATE = {
             currentUser: null,
             activeContact: null,
@@ -819,7 +1006,6 @@
             isMobile: window.innerWidth <= 768
         };
 
-        // DOM элементы
         const ELEMENTS = {
             authScreen: document.getElementById('authScreen'),
             appScreen: document.getElementById('appScreen'),
@@ -847,7 +1033,6 @@
             backBtn: document.getElementById('backBtn')
         };
 
-        // Инициализация Socket.IO
         function initSocket() {
             const serverUrl = window.location.origin;
             STATE.socket = io(serverUrl, {
@@ -858,13 +1043,11 @@
                 autoConnect: true
             });
 
-            // Обработчики событий
             STATE.socket.on('connect', () => {
                 updateStatus('connected', 'Онлайн');
                 STATE.reconnectAttempts = 0;
                 processMessageQueue();
                 
-                // Автоматический вход при перезагрузке
                 const savedUser = localStorage.getItem('messenger_user');
                 if (savedUser) {
                     STATE.socket.emit('login', JSON.parse(savedUser));
@@ -883,7 +1066,6 @@
                 STATE.currentUser = data.username;
                 showAppInterface();
                 
-                // Сохраняем данные пользователя
                 localStorage.setItem('messenger_user', JSON.stringify({
                     username: data.username,
                     password: localStorage.getItem('messenger_password')
@@ -922,7 +1104,6 @@
                     addMessageToChat(message, 'received');
                     playNotificationSound();
                     
-                    // Показать уведомление, если приложение не в фокусе
                     if (!document.hasFocus() && Notification.permission === 'granted') {
                         new Notification(`Новое сообщение от ${message.sender}`, {
                             body: message.text,
@@ -956,7 +1137,6 @@
             });
         }
 
-        // Обновление статуса
         function updateStatus(status, text) {
             ELEMENTS.statusIndicator.className = 'status-indicator';
             ELEMENTS.statusText.textContent = text;
@@ -974,7 +1154,6 @@
             }
         }
 
-        // Показать интерфейс приложения
         function showAppInterface() {
             ELEMENTS.authScreen.style.display = 'none';
             ELEMENTS.appScreen.style.display = 'flex';
@@ -982,17 +1161,14 @@
             ELEMENTS.userName.textContent = STATE.currentUser;
             ELEMENTS.userAvatar.textContent = STATE.currentUser.charAt(0).toUpperCase();
             
-            // Запрос списка онлайн-пользователей
             STATE.socket.emit('get_online_users');
             
-            // Настройка адаптивного интерфейса
             if (STATE.isMobile) {
                 ELEMENTS.contactsPanel.classList.remove('hidden');
                 ELEMENTS.chatContainer.classList.add('hidden');
             }
         }
 
-        // Обновление списка контактов
         function updateContactsList(users) {
             ELEMENTS.contactsList.innerHTML = '';
             
@@ -1031,7 +1207,6 @@
             });
         }
 
-        // Обновление статуса контакта
         function updateContactStatus(username, isOnline) {
             const contact = ELEMENTS.contactsList.querySelector(`.contact[data-username="${username}"]`);
             if (contact) {
@@ -1048,37 +1223,31 @@
             }
         }
 
-        // Выбор контакта
         function selectContact(username) {
             STATE.activeContact = username;
             ELEMENTS.currentContact.innerHTML = username;
             ELEMENTS.typingIndicator.style.display = 'none';
             ELEMENTS.chatMessages.innerHTML = '';
             
-            // Сброс активного контакта
             document.querySelectorAll('.contact').forEach(el => {
                 el.classList.remove('active');
             });
             
-            // Активация выбранного
             const contact = ELEMENTS.contactsList.querySelector(`.contact[data-username="${username}"]`);
             if (contact) {
                 contact.classList.add('active');
             }
             
-            // Запрос истории сообщений
             STATE.socket.emit('get_message_history', {
                 contact: username
             });
             
-            // Адаптация для мобильных устройств
             if (STATE.isMobile) {
                 ELEMENTS.contactsPanel.classList.add('hidden');
                 ELEMENTS.chatContainer.classList.remove('hidden');
             }
         }
 
-        // Отправка сообщения
         function sendMessage() {
             const message = ELEMENTS.messageInput.value.trim();
             if (!message || !STATE.activeContact) return;
@@ -1086,7 +1255,6 @@
             const tempId = `temp_${Date.now()}`;
             const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
             
-            // Добавление временного сообщения
             addMessageToChat({
                 id: tempId,
                 sender: STATE.currentUser,
@@ -1095,32 +1263,27 @@
                 status: 'sending'
             }, 'sent');
             
-            // Подготовка данных
             const messageData = {
                 temp_id: tempId,
                 recipient: STATE.activeContact,
                 message: message
             };
             
-            // Отправка или постановка в очередь
             if (STATE.socket.connected) {
                 STATE.socket.emit('send_message', messageData);
             } else {
                 STATE.messageQueue.push(messageData);
             }
             
-            // Сброс поля ввода
             ELEMENTS.messageInput.value = '';
             ELEMENTS.messageInput.style.height = 'auto';
         }
 
-        // Добавление сообщения в чат
         function addMessageToChat(message, type) {
             const messageElement = document.createElement('div');
             messageElement.className = `message ${type}`;
             messageElement.dataset.id = message.id;
             
-            // Иконки статуса
             let statusIcon = '';
             if (type === 'sent') {
                 if (message.status === 'sending') {
@@ -1144,7 +1307,6 @@
             ELEMENTS.chatMessages.scrollTop = ELEMENTS.chatMessages.scrollHeight;
         }
 
-        // Обновление статуса сообщения
         function updateMessageStatus(tempId, messageId, status) {
             const messageElement = ELEMENTS.chatMessages.querySelector(`.message[data-id="${tempId}"]`);
             if (messageElement) {
@@ -1166,7 +1328,6 @@
             }
         }
 
-        // Показать уведомление
         function showNotification(message) {
             const notification = document.createElement('div');
             notification.className = 'notification';
@@ -1182,7 +1343,6 @@
             }, 3000);
         }
 
-        // Воспроизвести звук уведомления
         function playNotificationSound() {
             try {
                 const audio = new Audio('https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3');
@@ -1193,16 +1353,13 @@
             }
         }
 
-        // Обработка очереди сообщений
         function processMessageQueue() {
             while (STATE.messageQueue.length > 0 && STATE.socket.connected) {
                 STATE.socket.emit('send_message', STATE.messageQueue.shift());
             }
         }
 
-        // Инициализация обработчиков событий
         function initEventListeners() {
-            // Формы аутентификации
             ELEMENTS.loginBtn.addEventListener('click', () => {
                 const username = document.getElementById('loginUsername').value.trim();
                 const password = document.getElementById('loginPassword').value;
@@ -1212,9 +1369,7 @@
                     return;
                 }
                 
-                // Сохраняем пароль для автоматического входа
                 localStorage.setItem('messenger_password', password);
-                
                 STATE.socket.emit('login', { username, password });
             });
             
@@ -1252,7 +1407,6 @@
                 location.reload();
             });
             
-            // Система сообщений
             ELEMENTS.sendBtn.addEventListener('click', sendMessage);
             
             ELEMENTS.messageInput.addEventListener('keypress', (e) => {
@@ -1276,12 +1430,10 @@
                     });
                 }, CONFIG.TYPING_TIMEOUT);
                 
-                // Авторазмер текстового поля
                 ELEMENTS.messageInput.style.height = 'auto';
                 ELEMENTS.messageInput.style.height = Math.min(ELEMENTS.messageInput.scrollHeight, 150) + 'px';
             });
             
-            // Поиск контактов
             ELEMENTS.searchContact.addEventListener('input', (e) => {
                 const term = e.target.value.toLowerCase();
                 document.querySelectorAll('.contact').forEach(contact => {
@@ -1290,7 +1442,6 @@
                 });
             });
             
-            // Адаптивные кнопки
             ELEMENTS.menuBtn.addEventListener('click', () => {
                 ELEMENTS.contactsPanel.classList.remove('hidden');
                 ELEMENTS.chatContainer.classList.add('hidden');
@@ -1301,13 +1452,11 @@
                 ELEMENTS.chatContainer.classList.add('hidden');
             });
             
-            // Определение смены ориентации
             window.addEventListener('resize', () => {
                 STATE.isMobile = window.innerWidth <= 768;
             });
         }
 
-        // Рендер истории сообщений
         function renderMessageHistory(messages) {
             ELEMENTS.chatMessages.innerHTML = '';
             
@@ -1327,7 +1476,6 @@
             });
         }
 
-        // Запрос разрешения на уведомления
         function requestNotificationPermission() {
             if (!('Notification' in window)) return;
             
@@ -1336,7 +1484,6 @@
             }
         }
 
-        // Инициализация приложения
         function initApp() {
             initSocket();
             initEventListeners();
@@ -1344,8 +1491,20 @@
             requestNotificationPermission();
         }
 
-        // Запуск после загрузки страницы
-        window.addEventListener('DOMContentLoaded', initApp);
+        window.addEventListener('DOMContentLoaded', function() {
+            const conChars = document.querySelectorAll('.con-text span');
+            conChars.forEach((char, index) => {
+                char.style.animationDelay = `${1.2 + index * 0.15}s`;
+            });
+
+            setTimeout(function() {
+                document.getElementById('splashScreen').style.display = 'none';
+                document.querySelector('.container').style.display = 'flex';
+                document.querySelector('.status-bar').style.display = 'flex';
+            }, 7000);
+
+            initApp();
+        });
     </script>
 </body>
 </html>
