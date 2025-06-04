@@ -35,11 +35,11 @@
                 <div class="auth-title">вход в >_ messenger</div>
                 <div class="input-group">
                     <label for="loginUsername">имя пользователя</label>
-                    <input type="text" id="loginUsername" placeholder="придумай ник" autocomplete="off">
+                    <input type="text" id="loginUsername" placeholder="напиши свой ник" autocomplete="off">
                 </div>
                 <div class="input-group">
                     <label for="loginPassword">пароль</label>
-                    <input type="password" id="loginPassword" placeholder="придумай пароль" autocomplete="off">
+                    <input type="password" id="loginPassword" placeholder="напиши свой пароль" autocomplete="off">
                 </div>
                 <button class="btn" id="loginBtn">войти!</button>
                 <div class="auth-toggle">
@@ -51,15 +51,15 @@
                 <div class="auth-title">регистрация</div>
                 <div class="input-group">
                     <label for="registerUsername">имя пользователя</label>
-                    <input type="text" id="registerUsername" placeholder="придумай ник" autocomplete="off">
+                    <input type="text" id="registerUsername" placeholder="придумай свой ник" autocomplete="off">
                 </div>
                 <div class="input-group">
                     <label for="registerPassword">пароль</label>
-                    <input type="password" id="registerPassword" placeholder="придумай пароль" autocomplete="off">
+                    <input type="password" id="registerPassword" placeholder="придумай свой пароль" autocomplete="off">
                 </div>
                 <div class="input-group">
                     <label for="registerConfirm">подтверди пароль</label>
-                    <input type="password" id="registerConfirm" placeholder=" " autocomplete="off">
+                    <input type="password" id="registerConfirm" placeholder="повтори пароль" autocomplete="off">
                 </div>
                 <button class="btn" id="registerBtn">создать аккаунт!</button>
                 <div class="auth-toggle">
@@ -78,7 +78,7 @@
                     <div class="username" id="userName">User</div>
                 </div>
                 <button class="logout-btn" id="logoutBtn">
-                    <i class="fas fa-sign-out-alt"></i> выйти
+                    <i class="fas fa-sign-out-alt"></i> выйти :(
                 </button>
             </div>
             
@@ -89,7 +89,7 @@
                     </div>
                     <div class="search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="searchContact" placeholder="Поиск контактов..." autocomplete="off">
+                        <input type="text" id="searchContact" placeholder="поиск контактов..." autocomplete="off">
                     </div>
                     <div class="contacts-list" id="contactsList">
                     </div>
@@ -114,7 +114,7 @@
                             <textarea 
                                 class="message-input" 
                                 id="messageInput" 
-                                placeholder="Введите сообщение..." 
+                                placeholder="напиши сообщение..." 
                                 rows="1"
                                 autocomplete="off"
                             ></textarea>
@@ -155,7 +155,9 @@
         typingTimeout: null,
         pendingMessages: {},
         isMobile: window.innerWidth <= 768,
-        receivedMessages: new Set()
+        receivedMessages: new Set(),
+        messageStore: {},
+        lastContact: null
     };
 
     const ELEMENTS = {
@@ -252,6 +254,12 @@
             if (STATE.receivedMessages.has(message.id)) return;
             STATE.receivedMessages.add(message.id);
             
+            const contact = message.sender === STATE.currentUser ? message.recipient : message.sender;
+            if (!STATE.messageStore[contact]) {
+                STATE.messageStore[contact] = [];
+            }
+            STATE.messageStore[contact].push(message);
+            
             if (message.recipient === STATE.currentUser) {
                 addMessageToChat(message, 'received');
                 playNotificationSound();
@@ -269,8 +277,10 @@
         });
 
         STATE.socket.on('message_history', (data) => {
+            STATE.messageStore[data.contact] = data.messages;
+            
             if (data.contact === STATE.activeContact) {
-                renderMessageHistory(data.messages);
+                renderMessageHistory();
             }
         });
 
@@ -352,6 +362,18 @@
             const success = await sendMessageWithRetry(messageData);
             if (success) {
                 delete STATE.pendingMessages[tempId];
+                
+                if (!STATE.messageStore[STATE.activeContact]) {
+                    STATE.messageStore[STATE.activeContact] = [];
+                }
+                STATE.messageStore[STATE.activeContact].push({
+                    id: tempId,
+                    sender: STATE.currentUser,
+                    recipient: STATE.activeContact,
+                    text: message,
+                    timestamp: timestamp,
+                    status: 'sent'
+                });
             } else {
                 updateMessageStatus(tempId, null, 'failed');
             }
@@ -403,7 +425,7 @@
                 <div class="no-contacts">
                     <div style="text-align: center; padding: 30px; color: var(--text-secondary)">
                         <i class="fas fa-user-friends" style="font-size: 40px; margin-bottom: 15px;"></i>
-                        <p>Нет доступных контактов</p>
+                        <p>нет доступных контактов :(</p>
                     </div>
                 </div>
             `;
@@ -429,7 +451,7 @@
                     <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
                 </div>
                 <div class="last-message" style="color: ${isOnline ? 'var(--online)' : 'var(--offline)'}">
-                    ${isOnline ? 'В сети' : 'Не в сети'}
+                    ${isOnline ? 'в сети' : 'не в сети'}
                 </div>
             </div>
         `;
@@ -450,7 +472,7 @@
             }
             
             if (statusText) {
-                statusText.textContent = isOnline ? 'В сети' : 'Не в сети';
+                statusText.textContent = isOnline ? 'в сети' : 'не в сети';
                 statusText.style.color = isOnline ? 'var(--online)' : 'var(--offline)';
             }
         } else if (isOnline) {
@@ -459,10 +481,17 @@
     }
 
     function selectContact(username) {
+        if (STATE.activeContact === username) {
+            if (STATE.isMobile) {
+                ELEMENTS.contactsPanel.classList.add('hidden');
+                ELEMENTS.chatContainer.classList.remove('hidden');
+            }
+            return;
+        }
+        
         STATE.activeContact = username;
         ELEMENTS.currentContact.innerHTML = username;
         ELEMENTS.typingIndicator.style.display = 'none';
-        ELEMENTS.chatMessages.innerHTML = '';
         
         document.querySelectorAll('.contact').forEach(el => {
             el.classList.remove('active');
@@ -473,9 +502,20 @@
             contact.classList.add('active');
         }
         
-        STATE.socket.emit('get_message_history', {
-            contact: username
-        });
+        if (STATE.messageStore[username]) {
+            renderMessageHistory();
+        } 
+        else {
+            ELEMENTS.chatMessages.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--text-secondary)">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 40px; margin-bottom: 15px;"></i>
+                    <p>загрузка сообщений...</p>
+                </div>
+            `;
+            STATE.socket.emit('get_message_history', {
+                contact: username
+            });
+        }
         
         if (STATE.isMobile) {
             ELEMENTS.contactsPanel.classList.add('hidden');
@@ -484,6 +524,10 @@
     }
 
     function addMessageToChat(message, type) {
+        if (ELEMENTS.chatMessages.querySelector(`.message[data-id="${message.id}"]`)) {
+            return;
+        }
+        
         const messageElement = document.createElement('div');
         messageElement.className = `message ${type}`;
         messageElement.dataset.id = message.id;
@@ -510,7 +554,13 @@
         `;
         
         ELEMENTS.chatMessages.appendChild(messageElement);
-        ELEMENTS.chatMessages.scrollTop = ELEMENTS.chatMessages.scrollHeight;
+        
+        const isAtBottom = ELEMENTS.chatMessages.scrollHeight - ELEMENTS.chatMessages.clientHeight <= 
+                          ELEMENTS.chatMessages.scrollTop + 100;
+        
+        if (isAtBottom) {
+            ELEMENTS.chatMessages.scrollTop = ELEMENTS.chatMessages.scrollHeight;
+        }
     }
 
     function updateMessageStatus(tempId, messageId, status) {
@@ -579,7 +629,7 @@
             const password = document.getElementById('loginPassword').value;
             
             if (!username || !password) {
-                showNotification('Заполните все поля');
+                showNotification('заполни все поля!');
                 return;
             }
             
@@ -593,12 +643,12 @@
             const confirm = document.getElementById('registerConfirm').value;
             
             if (!username || !password || !confirm) {
-                showNotification('Заполните все поля');
+                showNotification('заполни все поля!');
                 return;
             }
             
             if (password !== confirm) {
-                showNotification('Пароли не совпадают');
+                showNotification('пароли не совпадают!');
                 return;
             }
             
@@ -671,25 +721,41 @@
         });
     }
 
-    function renderMessageHistory(messages) {
-        ELEMENTS.chatMessages.innerHTML = '';
-        STATE.receivedMessages.clear();
+    function renderMessageHistory() {
+        const messages = STATE.messageStore[STATE.activeContact] || [];
+        
+        if (ELEMENTS.chatMessages.innerHTML.includes('fa-spinner')) {
+            ELEMENTS.chatMessages.innerHTML = '';
+        }
+        
+        if (STATE.lastContact !== STATE.activeContact) {
+            ELEMENTS.chatMessages.innerHTML = '';
+            STATE.lastContact = STATE.activeContact;
+        }
         
         if (messages.length === 0) {
-            ELEMENTS.chatMessages.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: var(--text-secondary)">
-                    <i class="fas fa-comments" style="font-size: 40px; margin-bottom: 15px;"></i>
-                    <p>Начните общение с ${STATE.activeContact}</p>
-                </div>
-            `;
+            if (ELEMENTS.chatMessages.innerHTML === '') {
+                ELEMENTS.chatMessages.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: var(--text-secondary)">
+                        <i class="fas fa-comments" style="font-size: 40px; margin-bottom: 15px;"></i>
+                        <p>начни общение с ${STATE.activeContact}!</p>
+                    </div>
+                `;
+            }
             return;
         }
         
         messages.forEach(msg => {
-            STATE.receivedMessages.add(msg.id);
             const type = msg.sender === STATE.currentUser ? 'sent' : 'received';
             addMessageToChat(msg, type);
         });
+        
+        const isAtBottom = ELEMENTS.chatMessages.scrollHeight - ELEMENTS.chatMessages.clientHeight <= 
+                          ELEMENTS.chatMessages.scrollTop + 100;
+        
+        if (isAtBottom) {
+            ELEMENTS.chatMessages.scrollTop = ELEMENTS.chatMessages.scrollHeight;
+        }
     }
 
     function requestNotificationPermission() {
@@ -702,7 +768,7 @@
     function initApp() {
         initSocket();
         initEventListeners();
-        updateStatus('processing', 'Подключение...');
+        updateStatus('processing', 'подключение...');
         requestNotificationPermission();
     }
 
